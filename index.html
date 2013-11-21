@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html ng-app="webrtcdemo">
+<head>
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.css">
+  <style>.ng-cloak { display: none }</style>
+</head>
+<body>
+  <div class="ng-cloak" ng-controller="demoCtrl">
+
+
+    <div class="row">
+      <div class="col-md-12">
+
+        <video width="64" class="pull-left img-thumbnail" ng-src="{{me.videoUrl}}" autoplay="true"></video>
+        <h3>Welcome, you are {{peer.id}}</h3>
+        <div class="alert alert-danger" ng-hide="me.videoUrl">
+          For this to be cool, you need to click the "yes you can use my webcam" button above
+        </div>
+
+        <div class="well" ng-hide="hideExplanation">
+          <button type="button" class="close" data-dismiss="alert" aria-hidden="true" ng-click="hideExplanation=true">&times;</button>
+          <h4>What is this?</h4>
+          <p>
+            This is a demo of some things you can do with webRTC.
+            <h6>What it does</h6>
+            <ul>
+              <li>First it uses a service called <a href="http://peerjs.com">PeerJS</a> to register as a peer</li>
+              <li>Then, it makes a RTCPeerConnection to a "presenter" (in this case my chrome browser running on my laptop) to see who is online</li>
+              <li>The it creates a direct data connection to every other person viewing this page</li>
+              <li>then it asks you to caputure your webcam and it also establishes a video connection with every other person viewing this page</li>
+              <li>It uses that video connection as the "live" avatar next to your name in your chat messages</li>
+              <li>When you send a chat message or upload files, it sends it <em>directly</em> to each peer connected.  no messages, files, or video ever go through a server</li>
+            </ul>
+            TL:DR, video/text chat & p2p file sharing using <b>no servers</b> and <b>no plugins (no flash)</b>
+          </p>
+        </div>
+
+    </div>
+    <div class="row">
+
+      <div class="col-md-6">
+        <div class="panel panel-default">
+          <div class="panel-heading">Online Users</div>
+          <div class="panel-body">
+            <div class="list-group">
+              <a href="#" class="list-group-item clearfix" ng-class="{active: user == peer.id }" ng-repeat="user in peerConnections">
+                <video
+                  width="48"
+                  class="pull-left"
+                  ng-src="{{user.videoUrl}}"
+                  autoplay="true"
+                  ng-show="user.videoUrl"
+                ></video>
+                {{user.userId}}
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="panel panel-default">
+          <div class="panel-heading">Shared Files</div>
+          <div class="panel-body">
+            <div class="row" id="file-uploads-holder" style="max-height: 400px; overflow: auto">
+              <div class="col-sm-6 col-md-4" ng-repeat="file in files">
+                <div class="thumbnail">
+                  <div ng-switch on="file.previewType">
+                    <img
+                      ng-switch-when="image"
+                      ng-src="{{file.url}}"
+                      style="max-width: 100%"
+                    >
+                    <video
+                      ng-switch-when="video"
+                      ng-src="{{file.url}}"
+                      style="max-width: 100%"
+                      controls
+                    ></video>
+                    <audio
+                      ng-switch-when="audio"
+                      ng-src="{{file.url}}"
+                      style="max-width: 100%"
+                      controls
+                    ></audio>
+                  </div>
+                  <div class="caption">
+                    <h6><a ng-href="{{file.url}}">Download {{file.name}}</a></h6>
+                    <p>
+                      <small>{{file.size |bytes}}</small>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <form>
+              <label for="chatMessage">Share some files directly (p2p, not through any servers) w/ everyone on this page</label>
+              <input
+                type="file"
+                onchange="angular.element(this).scope().uploadFiles(this.files);this.value='';"
+                multiple
+              />
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
+
+
+
+    <div class="panel panel-default">
+      <div class="panel-heading">Chat</div>
+      <div class="panel-body">
+      <div id="chat-message-holder" style="max-height: 300px; overflow:auto">
+        <div class="media" ng-repeat="message in chatMessages">
+          <a class="pull-left" href="#">
+            <video
+              width="64"
+              class="media-object img-thumbnail"
+              ng-src="{{message.author.videoUrl}}"
+              autoplay="true"
+              ng-show="message.author.videoUrl"
+            ></video>
+            <img
+              class="media-object img-thumbnail"
+              src="http://dummyimage.com/64x64/a6a6a6/000000&text=no+webcam"
+              ng-hide="message.author.videoUrl"
+            >
+          </a>
+          <div class="media-body">
+            <h4 class="media-heading">{{message.author.userId}}</h4>
+            {{message.message}}
+          </div>
+        </div>
+      </div>
+      <form novalidate ng-submit="postChatMessage()">
+        <label for="chatMessage">Say Something</label>
+        <input
+          class="form-control"
+          ng-model="chatMessage"
+          id="chatMessage"
+          placeholder="send a message directly (p2p) to to every person on this page"
+          required
+        >
+      </form>
+    </div>
+
+
+
+  </div>
+
+
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.1/angular.js"></script>
+  <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
+  <script src="js/demo.js"></script>
+</body>
+</html>
