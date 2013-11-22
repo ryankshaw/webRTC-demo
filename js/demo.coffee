@@ -1,22 +1,10 @@
-API_KEY = '2db0hg7b28iwwmi'
-PRESENTING_PEERS_ID = 'presenterwerwe'
+PEER_JS_API_KEY = '2db0hg7b28iwwmi'
 
-# Special code that only the presenter needs to run
-if location.search.match('presenter')
-  allParticipants = {}
-  tellEveryoneSomeoneNewIsOnline = ->
-    ids = Object.keys allParticipants
-    c.send(type: 'user_added', data: ids) for id, c of allParticipants
-
-  presentingPeer = new Peer(PRESENTING_PEERS_ID, {key: API_KEY, debug: 3})
-  presentingPeer.on 'connection', (conn) ->
-    allParticipants[conn.peer] = conn
-    tellEveryoneSomeoneNewIsOnline()
+navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                         navigator.mozGetUserMedia || navigator.msGetUserMedia
 
 
-
-
-angular.module("webrtcdemo", [])
+angular.module("webrtcdemo", ['firebase'])
 
 # need to do some hackery so angular will let us use blob urls
 .config ($compileProvider) ->
@@ -24,51 +12,71 @@ angular.module("webrtcdemo", [])
   $compileProvider.aHrefSanitizationWhitelist(/^\s*(https?|ftp|mailto|tel|file|blob):/)
 
 
-# the filter that is used to show "12 MB" or "1.2 kB"
+# the filter that is used to show "12 MB" or "1.2 kB", not important
 .filter 'bytes', ->
-  units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB']
-  (bytes, precision = 1) ->
-    return '' if isNaN(parseFloat(bytes)) || !isFinite(bytes)
-    mult = 1
-    for unitname in units
-      if bytes < (mult * 1000)
-        quantity = bytes / mult
-        # round to at most 1 decimal
-        quantity = Math.round(quantity * 10) / 10
-        return "#{quantity} #{unitname}"
-      mult *= 1000
-    return bytes
+  (b) ->
+    return '' if isNaN(parseFloat(b)) || !isFinite(b)
+    m = 1
+    for u in ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB']
+      return "#{Math.round(b / m * 10) / 10} #{u}" if b < (m * 1000)
+      m *= 1000
 
 
-.controller "demoCtrl", ($scope, $timeout, $sce, $q) ->
+.controller "demoCtrl", ($scope, $timeout, $sce, $q, angularFire) ->
 
   # this is how we ask you to capture your webcam
   getMyVideo = do ->
     dfd = $q.defer()
-    navigator.getMedia = navigator.getUserMedia ||
-                         navigator.webkitGetUserMedia ||
-                         navigator.mozGetUserMedia ||
-                         navigator.msGetUserMedia
+    constraints =
+      video:
+        mandatory:
+          maxWidth: 320,
+          maxHeight: 180
 
-    navigator.getMedia({video: true, audio: true}, dfd.resolve, dfd.reject)
+    navigator.getUserMedia(constraints, dfd.resolve, dfd.reject)
     dfd.promise
 
   getMyVideo.then (stream) ->
     $scope.me.videoUrl = $sce.trustAsResourceUrl(URL.createObjectURL(stream))
-  , console.error.bind(console, 'Failed to get local stream')
+  , ->
+    console.error('Failed to get local video stream')
 
 
-
-  $scope.peerConnections = {}
+  myId = +new Date
+  $scope.me =
+    firebaseRef:
+      name: "Visitor #{myId}"
   $scope.chatMessages = []
   $scope.files = []
-  $scope.me = {}
+  $scope.peerConnections = {}
+  $scope.firebaseUsers = {}
 
-  $scope.peer = new Peer({key: API_KEY, debug: 3})
-  $scope.peer.on 'open', (id) -> $scope.$apply -> $scope.me.userId = id
+  ref = new Firebase('https://ryanswebrtcdemo.firebaseio.com/onlineUsers')
+  angularFire(ref, $scope, "firebaseUsers")
+  $scope.$watch 'firebaseUsers', (newValue, oldValue) ->
+    # WTF! firebase does something where this is copied by val and not ref,
+    # have to reset it ever time so the stay in sync.
+    if myRef = $scope.firebaseUsers[$scope.me.userId]
+      $scope.me.firebaseRef = myRef
+
+    # clean up any closed connections
+    delete $scope.peerConnections[id] for id of $scope.peerConnections when !newValue[id]
+
+    # set up any new connections
+    setupPeerConnection(userId) for userId of newValue
+
+
+  $scope.peer = new Peer(myId, {key: PEER_JS_API_KEY, debug: 3})
+
+  # tell everyone else I'm online once I have a connection
+  $scope.peer.on 'open', (id) -> $scope.$apply ->
+    $scope.me.userId = id
+    $scope.firebaseUsers[id] = $scope.me.firebaseRef
+
 
   # if anyone tries to connect to us, set them up as a peer
   $scope.peer.on 'connection', (conn) -> $scope.$apply ->
+    debugger
     setupPeerConnection(conn.peer, dataConn: conn)
 
   # if anyone tries to call (aka: send us their video stream),
@@ -78,12 +86,9 @@ angular.module("webrtcdemo", [])
       call.answer(myVideoStream)
       setupPeerConnection(call.peer, mediaConn: call)
 
-  console.log "Connecting to the presenter so he can tell me who's online."
-  presenterConn = $scope.peer.connect(PRESENTING_PEERS_ID, reliable: true)
-  presenterConn.on 'data', ({type, data}) -> $scope.$apply ->
-    console.log 'presenter says these people are online', data...
-    setupPeerConnection(user) for user in data
-
+  # clean up after ourselves if we close the tab
+  $scope.peer.on 'close', -> $scope.$apply -> delete $scope.firebaseUsers[$scope.peer.id]
+  window.onunload = window.onbeforeunload = -> $scope.peer.destroy()
 
   addChatMessage = (authorId, message) ->
     author = if authorId is $scope.peer.id
@@ -96,25 +101,16 @@ angular.module("webrtcdemo", [])
 
 
   addFile = (from, data) ->
-    # Files that get sent from us from remote peers are ArrayBuffers.
+    # Files that get sent to us from remote peers are ArrayBuffers.
     # We need to turn them into a Blob to make a url out of them
     if data.file.constructor is ArrayBuffer
-      dataView = new Uint8Array(data.file)
-      data.file = new Blob([dataView])
+      data.file = new Blob([new Uint8Array(data.file)])
 
     # creates string URL representing the given File or Blob object.
     url = URL.createObjectURL(data.file)
     # tells angular to trust it as a <img|video|audio src
     data.url = $sce.trustAsResourceUrl(url)
-
-    data.previewType = if data.type.match('image')
-      'image'
-    else if data.type.match('video')
-      'video'
-    else if data.type.match('audio')
-      'audio'
-
-    data.author = if from is $scope.peer.id
+    data.uploader = if from is $scope.peer.id
       $scope.me
     else
       $scope.peerConnections[from]
@@ -135,7 +131,7 @@ angular.module("webrtcdemo", [])
   $scope.uploadFiles = (files) -> $scope.$apply ->
     angular.forEach files, (file) ->
       fileData =
-        file:file
+        file: file
         name: file.name
         type: file.type
         size: file.size
@@ -155,22 +151,31 @@ angular.module("webrtcdemo", [])
 
 
   setupPeerConnection = (userId, options={}) ->
+    return if userId is $scope.peer.id # don't need to connect to ourself
     {dataConn, mediaConn} = options
+    debugger
     user = $scope.peerConnections[userId] ||= {}
     user.userId = userId
+    user.firebaseRef = $scope.firebaseUsers[userId]
 
     # setup a data connection with this user unless we already have one
-    unless user.dataConn
-      user.dataConn = dataConn || $scope.peer.connect(userId, reliable: true)
-      user.dataConn.on 'data', ({type, data}) -> $scope.$apply ->
-        handlePeerEvent(user.dataConn.peer, type, data)
+    heHasBeenOnlineLongerThanIHave = userId < $scope.peer.id
+    if !user.dataConn and (dataConn or heHasBeenOnlineLongerThanIHave)
+      # if we need to estblish a new connection, only do it if they've
+      # been online longer than I have. That way we don't both try
+      # to connect to each other at the same time
+      if heHasBeenOnlineLongerThanIHave
+        dataConn ||= $scope.peer.connect(userId)
+      if dataConn
+        console.warn('connecting 2x to user', user, dataConn) if user.DataConn
+        user.dataConn = dataConn
+        user.dataConn.on 'data', ({type, data}) -> $scope.$apply ->
+          handlePeerEvent(user.dataConn.peer, type, data)
 
     # setup a video connection with this user unless we already have one
     getMyVideo.then (myVideoStream) ->
-      unless user.mediaConn
-        user.mediaConn = mediaConn || $scope.peer.call(userId, myVideoStream)
-      if user.mediaConn and not user.mediaConn.open
-        user.mediaConn.answer(myVideoStream)
+      user.mediaConn ||= mediaConn || $scope.peer.call(userId, myVideoStream)
+      user.mediaConn.answer(myVideoStream) unless user.mediaConn.open
       user.mediaConn.on 'stream', (remoteStream) -> $scope.$apply ->
         # creates blob: URL representing the videoStream
         url = URL.createObjectURL(remoteStream)

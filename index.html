@@ -2,7 +2,37 @@
 <html ng-app="webrtcdemo">
 <head>
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.css">
-  <style>.ng-cloak { display: none }</style>
+  <style>
+    .ng-cloak { display: none }
+
+    .ribbon-wrapper-green {
+      width: 85px;
+      height: 88px;
+      overflow: hidden;
+      position: absolute;
+      top: -3px;
+      right: -3px;
+    }
+
+    .ribbon-green {
+      text-align: center;
+      -webkit-transform: rotate(45deg);
+      -moz-transform:    rotate(45deg);
+      -ms-transform:     rotate(45deg);
+      -o-transform:      rotate(45deg);
+      position: relative;
+      padding: 3px 0;
+      left: -5px;
+      top: 15px;
+      width: 120px;
+      background-color: #BFDC7A;
+    }
+    small {
+      color: #999999;
+      font-size: 60%;
+    }
+    h6 { margin: 0;}
+  </style>
 </head>
 <body>
 
@@ -12,31 +42,52 @@
 
     <div class="row">
       <div class="col-md-12">
-
-        <video width="64" class="pull-left img-thumbnail" ng-src="{{me.videoUrl}}" autoplay="true"></video>
-        <h3>Welcome, you are {{peer.id}}</h3>
         <div class="alert alert-danger" ng-hide="me.videoUrl">
           For this to be cool, you need to click the "yes you can use my webcam" button above
         </div>
 
-        <div class="well" ng-hide="hideExplanation">
+        <div class="well" ng-hide="hideExplanation" style="font-size: 12px; padding: 10px">
           <button type="button" class="close" data-dismiss="alert" aria-hidden="true" ng-click="hideExplanation=true">&times;</button>
+
           <h4>What is this?</h4>
           <p>
             This is a demo of some things you can do with webRTC.
             <h6>What it does</h6>
             <ul>
-              <li>First it uses a service called <a href="http://peerjs.com">PeerJS</a> to register as a peer</li>
-              <li>Then, it makes a RTCPeerConnection to a "presenter" (in this case my chrome browser running on my laptop) to see who is online</li>
-              <li>The it creates a direct data connection to every other person viewing this page</li>
-              <li>then it asks you to caputure your webcam and it also establishes a video connection with every other person viewing this page</li>
-              <li>It uses that video connection as the "live" avatar next to your name in your chat messages</li>
-              <li>When you send a chat message or upload files, it sends it <em>directly</em> to each peer connected.  no messages, files, or video ever go through a server</li>
+              <li>
+                First, it uses <a href="http://angularfire.com/">angularfilre</a> to connect
+                to a real-time <a href="https://www.firebase.com/">firebase</a> database to get a list of users on this page
+              </li>
+              <li>
+                Then, it uses a service called <a href="http://peerjs.com">PeerJS</a>
+                to simplify and abstract away some of the details of creating an
+                RTCPeerConnection to ever other person viewing this page
+              </li>
+              <li>
+                Then, using that RTCPeerConnection it establishes a RTCDataChannel
+                w/ each peer, enabling communication of arbitrary data
+                (in this case chat messages and file uploads)
+              </li>
+              <li>
+                Then, using <a href="https://developer.mozilla.org/en-US/docs/Web/API/Navigator.getUserMedia">navigator.getUserMedia</a>
+                it asks you to caputure your webcam and it also establishes a p2p
+                video connection with every other person viewing this page
+              </li>
+              <li>
+                It uses that video connection as the "live" avatar next
+                to your name in your chat messages
+              </li>
+              <li>
+                When you send a chat message or upload files, it sends it
+                <em>directly</em> to each peer connected.  no messages,
+                files, or video ever go through a server
+              </li>
             </ul>
-            TL:DR, video/text chat & p2p file sharing using <b>no servers</b> and <b>no plugins (no flash)</b>
+            TL,DR: video/text chat & p2p file sharing using <b>no servers</b>
+            (except to get a list of who's online) and <b>no plugins (no flash)</b>
           </p>
           <p>
-            <a href="https://github.com/ryankshaw/webRTC-demo/blob/master/js/demo.coffee">Read the Source</a> on github.
+            <b><a href="https://github.com/ryankshaw/webRTC-demo/blob/master/js/demo.coffee">Read the Source</a> on github.</b>
             If you have any questions email me at my github username at gmail.
           </p>
         </div>
@@ -48,17 +99,52 @@
         <div class="panel panel-default">
           <div class="panel-heading">Online Users</div>
           <div class="panel-body">
-            <div class="list-group">
-              <a href="#" class="list-group-item clearfix" ng-class="{active: user == peer.id }" ng-repeat="user in peerConnections">
-                <video
-                  width="48"
-                  class="pull-left"
-                  ng-src="{{user.videoUrl}}"
-                  autoplay="true"
-                  ng-show="user.videoUrl"
-                ></video>
-                {{user.userId}}
-              </a>
+            <div class="row" style="max-height: 400px; overflow: auto">
+              <div style="max-width: 18%; margin-left:10px; float: left;">
+                <div class="thumbnail" style="position: relative; height:150px">
+                  <div class="ribbon-wrapper-green"><div class="ribbon-green">You</div></div>
+                  <video
+                    ng-show="me.videoUrl"
+                    ng-src="{{me.videoUrl}}"
+                    style="max-width: 100%"
+                    autoplay="true"
+                  ></video>
+                  <img
+                    style="max-width: 100%"
+                    src="http://dummyimage.com/190x107/a6a6a6/000000&text=no+webcam"
+                    ng-hide="me.videoUrl"
+                  >
+                  <div class="caption">
+                    <input
+                      type="text"
+                      class="form-control input-sm"
+                      style="height:20px"
+                      ng-model="me.firebaseRef.name"
+                      placeholder="Your Name"
+                    >
+                    <small>{{me.userId}}</small>
+                  </div>
+                </div>
+              </div>
+              <div style="max-width: 18%; margin-left:10px; float: left;" ng-repeat="user in peerConnections">
+                <div class="thumbnail" style=" height:150px">
+                  <video
+                    ng-show="user.videoUrl"
+                    ng-src="{{user.videoUrl}}"
+                    style="max-width: 100%"
+                    autoplay="true"
+                  ></video>
+                  <img
+                    style="max-width: 100%"
+                    src="http://dummyimage.com/190x107/a6a6a6/000000&text=no+webcam"
+                    ng-hide="user.videoUrl"
+                  >
+                  <div class="caption">
+                    <h6>{{user.firebaseRef.name}}</h6>
+                    <small>{{user.userId}}</small>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -71,7 +157,7 @@
             <div class="row" id="file-uploads-holder" style="max-height: 400px; overflow: auto">
               <div class="col-sm-6 col-md-4" ng-repeat="file in files">
                 <div class="thumbnail">
-                  <div ng-switch on="file.previewType">
+                  <div ng-switch on="file.type.substring(0,5)">
                     <img
                       ng-switch-when="image"
                       ng-src="{{file.url}}"
@@ -94,6 +180,7 @@
                     <h6><a ng-href="{{file.url}}">Download {{file.name}}</a></h6>
                     <p>
                       <small>{{file.size |bytes}}</small>
+                      <small>from {{file.uploader.firebaseRef.name || message.uploader.userId}}</small>
                     </p>
                   </div>
                 </div>
@@ -112,7 +199,6 @@
       </div>
 
     </div>
-
 
 
 
@@ -137,7 +223,7 @@
             >
           </a>
           <div class="media-body">
-            <h4 class="media-heading">{{message.author.userId}}</h4>
+            <h4 class="media-heading">{{message.author.firebaseRef.name || message.author.userId}}</h4>
             {{message.message}}
           </div>
         </div>
@@ -154,14 +240,12 @@
       </form>
     </div>
 
-
-
   </div>
 
-  <a href="https://github.com/ryankshaw/webRTC-demo"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
-
   <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.1/angular.js"></script>
-  <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
+  <script src="http://cdn.peerjs.com/0.3.4/peer.js"></script>
+  <script src="//cdn.firebase.com/v0/firebase.js"></script>
+  <script src="//cdn.firebase.com/libs/angularfire/0.3.0/angularfire.min.js"></script>
   <script src="js/demo.js"></script>
 </body>
 </html>
