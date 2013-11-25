@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html ng-app="webrtcdemo">
 <head>
+  <meta charset="utf-8">
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.css">
   <style>
     .ng-cloak { display: none }
@@ -131,7 +132,7 @@
                   <video
                     ng-show="user.videoUrl"
                     ng-src="{{user.videoUrl}}"
-                    style="max-width: 100%"
+                    style="max-width: 100%; max-height: 88px; margin: auto; display: block;"
                     autoplay="true"
                   ></video>
                   <img

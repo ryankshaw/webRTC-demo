@@ -2,7 +2,7 @@
 (function() {
   var PEER_JS_API_KEY;
 
-  PEER_JS_API_KEY = 'lwjd5qra8257b9';
+  PEER_JS_API_KEY = '2db0hg7b28iwwmi';
 
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
@@ -30,7 +30,9 @@
     getMyVideo = (function() {
       var constraints, dfd;
       dfd = $q.defer();
-      constraints = {
+      constraints = navigator.userAgent.match(/Firefox\/2[0-7]/) ? {
+        video: true
+      } : {
         video: {
           mandatory: {
             maxWidth: 320,

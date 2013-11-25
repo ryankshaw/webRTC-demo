@@ -27,7 +27,11 @@ angular.module("webrtcdemo", ['firebase'])
   # this is how we ask you to capture your webcam
   getMyVideo = do ->
     dfd = $q.defer()
-    constraints =
+    # firefox up till version 27 doesn't allow mandatory contraints
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=927358
+    constraints = if navigator.userAgent.match(/Firefox\/2[0-7]/)
+      video:true
+    else
       video:
         mandatory:
           maxWidth: 320,
