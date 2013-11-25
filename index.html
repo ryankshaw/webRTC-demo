@@ -55,8 +55,8 @@
             <h6>What it does</h6>
             <ul>
               <li>
-                First, it uses <a href="http://angularfire.com/">angularfilre</a> to connect
-                to a real-time <a href="https://www.firebase.com/">firebase</a> database to get a list of users on this page
+                First, it uses <a href="http://angularfire.com/">AngularFire</a> to connect
+                to a real-time <a href="https://www.firebase.com/">Firebase</a> database to get a list of users on this page
               </li>
               <li>
                 Then, it uses a service called <a href="http://peerjs.com">PeerJS</a>
@@ -177,7 +177,7 @@
                     ></audio>
                   </div>
                   <div class="caption">
-                    <h6><a ng-href="{{file.url}}">Download {{file.name}}</a></h6>
+                    <h6><a ng-href="{{file.url}}" download="{{file.name}}">Download {{file.name}}</a></h6>
                     <p>
                       <small>{{file.size |bytes}}</small>
                       <small>from {{file.uploader.firebaseRef.name || message.uploader.userId}}</small>
