@@ -55,11 +55,12 @@ angular.module("webrtcdemo", ['firebase'])
   $scope.peerConnections = {}
   $scope.firebaseUsers = {}
 
+  # connect to firebase DB just to keep track of who's online
   ref = new Firebase('https://ryanswebrtcdemo.firebaseio.com/onlineUsers')
   angularFire(ref, $scope, "firebaseUsers")
   $scope.$watch 'firebaseUsers', (newValue, oldValue) ->
     # WTF! firebase does something where this is copied by val and not ref,
-    # have to reset it ever time so the stay in sync.
+    # have to reset it every time so the stay in sync.
     if myRef = $scope.firebaseUsers[$scope.me.userId]
       $scope.me.firebaseRef = myRef
 
@@ -70,6 +71,7 @@ angular.module("webrtcdemo", ['firebase'])
     setupPeerConnection(userId) for userId of newValue
 
 
+  # connect to PeerJS and register as a peer
   $scope.peer = new Peer(myId, {key: PEER_JS_API_KEY, debug: 3})
 
   # tell everyone else I'm online once I have a connection
@@ -80,7 +82,6 @@ angular.module("webrtcdemo", ['firebase'])
 
   # if anyone tries to connect to us, set them up as a peer
   $scope.peer.on 'connection', (conn) -> $scope.$apply ->
-    debugger
     setupPeerConnection(conn.peer, dataConn: conn)
 
   # if anyone tries to call (aka: send us their video stream),
@@ -94,14 +95,20 @@ angular.module("webrtcdemo", ['firebase'])
   $scope.peer.on 'close', -> $scope.$apply -> delete $scope.firebaseUsers[$scope.peer.id]
   window.onunload = window.onbeforeunload = -> $scope.peer.destroy()
 
+
+  scrollElementToBottom = (elementId) ->
+    # have to do this in next tick so new changes exist before we try to scroll
+    $timeout -> document.getElementById(elementId)?.scrollTop = 9999999999
+
+
   addChatMessage = (authorId, message) ->
     author = if authorId is $scope.peer.id
       $scope.me
     else
       $scope.peerConnections[authorId]
     $scope.chatMessages.push {author, message}
-    # after we add the new message, scroll to the bottom
-    $timeout -> document.getElementById('chat-message-holder')?.scrollTop = 9999999999
+    scrollElementToBottom('chat-message-holder')
+
 
 
   addFile = (from, data) ->
@@ -120,8 +127,7 @@ angular.module("webrtcdemo", ['firebase'])
       $scope.peerConnections[from]
 
     $scope.files.push(data)
-    # after we add the new file, scroll to the bottom
-    $timeout -> document.getElementById('file-uploads-holder')?.scrollTop = 9999999999
+    scrollElementToBottom('file-uploads-holder')
 
 
   $scope.postChatMessage = ->
@@ -157,7 +163,6 @@ angular.module("webrtcdemo", ['firebase'])
   setupPeerConnection = (userId, options={}) ->
     return if userId is $scope.peer.id # don't need to connect to ourself
     {dataConn, mediaConn} = options
-    debugger
     user = $scope.peerConnections[userId] ||= {}
     user.userId = userId
     user.firebaseRef = $scope.firebaseUsers[userId]
