@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.css">
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
   <style>
     .ng-cloak { display: none }
 
@@ -141,8 +142,38 @@
                     ng-hide="user.videoUrl"
                   >
                   <div class="caption">
-                    <h6>{{user.firebaseRef.name}}</h6>
-                    <small>{{user.userId}}</small>
+                    <h6>
+                      {{user.firebaseRef.name}}
+                    </h6>
+                    <small>
+                      <span style="font-size: 13px">
+                        <i
+                          class="fa fa-eye"
+                          title="the webRTC video connection with this user is connected"
+                          style="color:#5CB85C"
+                          ng-show="user.mediaConn.open"
+                        ></i>
+                        <i
+                          class="fa fa-eye-slash"
+                          title="could not establish  webRTC video connection with this user"
+                          style="color:#D9534F"
+                          ng-hide="user.mediaConn.open"
+                        ></i>
+                        <i
+                          class="fa fa-chain"
+                          title="the RTCDataChannel connection with this user is open, chat & file sharing will work"
+                          style="color:#5CB85C"
+                          ng-show="user.dataConn.open"
+                        ></i>
+                        <i
+                          class="fa fa-chain-broken"
+                          title="could not establish a  RTCDataChannel connection with this user, chat & file sharing will NOT work"
+                          style="color:#D9534F"
+                          ng-hide="user.dataConn.open"
+                        ></i>
+                      </span>
+                      {{user.userId}}
+                    </small>
                   </div>
                 </div>
               </div>
