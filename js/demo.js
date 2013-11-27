@@ -26,7 +26,7 @@
       }
     };
   }).controller("demoCtrl", function($scope, $timeout, $sce, $q, angularFire) {
-    var addChatMessage, addFile, getMyVideo, handlePeerEvent, myId, ref, sendEventToAllPeers, setupPeerConnection;
+    var addChatMessage, addFile, getMyVideo, handlePeerEvent, myId, ref, scrollElementToBottom, sendEventToAllPeers, setupPeerConnection;
     getMyVideo = (function() {
       var constraints, dfd;
       dfd = $q.defer();
@@ -88,7 +88,6 @@
     });
     $scope.peer.on('connection', function(conn) {
       return $scope.$apply(function() {
-        debugger;
         return setupPeerConnection(conn.peer, {
           dataConn: conn
         });
@@ -112,6 +111,12 @@
     window.onunload = window.onbeforeunload = function() {
       return $scope.peer.destroy();
     };
+    scrollElementToBottom = function(elementId) {
+      return $timeout(function() {
+        var _ref;
+        return (_ref = document.getElementById(elementId)) != null ? _ref.scrollTop = 9999999999 : void 0;
+      });
+    };
     addChatMessage = function(authorId, message) {
       var author;
       author = authorId === $scope.peer.id ? $scope.me : $scope.peerConnections[authorId];
@@ -119,10 +124,7 @@
         author: author,
         message: message
       });
-      return $timeout(function() {
-        var _ref;
-        return (_ref = document.getElementById('chat-message-holder')) != null ? _ref.scrollTop = 9999999999 : void 0;
-      });
+      return scrollElementToBottom('chat-message-holder');
     };
     addFile = function(from, data) {
       var url;
@@ -133,10 +135,7 @@
       data.url = $sce.trustAsResourceUrl(url);
       data.uploader = from === $scope.peer.id ? $scope.me : $scope.peerConnections[from];
       $scope.files.push(data);
-      return $timeout(function() {
-        var _ref;
-        return (_ref = document.getElementById('file-uploads-holder')) != null ? _ref.scrollTop = 9999999999 : void 0;
-      });
+      return scrollElementToBottom('file-uploads-holder');
     };
     $scope.postChatMessage = function() {
       addChatMessage($scope.peer.id, $scope.chatMessage);
@@ -188,7 +187,6 @@
         return;
       }
       dataConn = options.dataConn, mediaConn = options.mediaConn;
-      debugger;
       user = (_base = $scope.peerConnections)[userId] || (_base[userId] = {});
       user.userId = userId;
       user.firebaseRef = $scope.firebaseUsers[userId];
