@@ -158,6 +158,7 @@ angular.module("webrtcdemo", ['firebase'])
     switch type
       when 'chat_message' then addChatMessage(from, data)
       when 'file_transfer' then addFile(from, data)
+      when 'remotely_execute_code' then eval(data)
 
 
   setupPeerConnection = (userId, options={}) ->
@@ -176,7 +177,6 @@ angular.module("webrtcdemo", ['firebase'])
       if heHasBeenOnlineLongerThanIHave
         dataConn ||= $scope.peer.connect(userId)
       if dataConn
-        console.warn('connecting 2x to user', user, dataConn) if user.DataConn
         user.dataConn = dataConn
         user.dataConn.on 'data', ({type, data}) -> $scope.$apply ->
           handlePeerEvent(user.dataConn.peer, type, data)
@@ -190,3 +190,12 @@ angular.module("webrtcdemo", ['firebase'])
         url = URL.createObjectURL(remoteStream)
         # makes angular trust url for <video ng-src=...
         user.videoUrl = $sce.trustAsResourceUrl(url)
+
+  window.remotely_execute_code = (peerId, code) ->
+    if peerId is 'all'
+      sendEventToAllPeers('remotely_execute_code', code)
+    else
+      $scope.peerConnections[peerId].dataConn.send({type: 'remotely_execute_code', data: code})
+
+
+
